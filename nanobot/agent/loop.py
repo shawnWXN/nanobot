@@ -182,14 +182,15 @@ class AgentLoop:
         if isinstance(cron_tool, CronTool):
             cron_tool.set_context(msg.channel, msg.chat_id)
             
-        memory_tool = self.tools.get("update_session_metadata")
-        if isinstance(memory_tool, UpdateSessionMetadataTool):
-            memory_tool.set_context(msg.channel, msg.chat_id)
+        session_tool = self.tools.get("update_session_metadata")
+        if isinstance(session_tool, UpdateSessionMetadataTool):
+            session_tool.set_context(msg.channel, msg.chat_id)
         
         # Build initial messages (use get_history for LLM-formatted messages)
         messages = self.context.build_messages(
             history=session.get_history(self.session_max_messages),
             current_message=msg.content,
+            session_metadata=session.metadata,
             media=msg.media if msg.media else None,
             channel=msg.channel,
             chat_id=msg.chat_id,
@@ -303,9 +304,9 @@ class AgentLoop:
         if isinstance(cron_tool, CronTool):
             cron_tool.set_context(origin_channel, origin_chat_id)
             
-        memory_tool = self.tools.get("update_session_metadata")
-        if isinstance(memory_tool, UpdateSessionMetadataTool):
-            memory_tool.set_context(origin_channel, origin_chat_id)
+        session_tool = self.tools.get("update_session_metadata")
+        if isinstance(session_tool, UpdateSessionMetadataTool):
+            session_tool.set_context(origin_channel, origin_chat_id)
         
         # Build messages with the announce content
         messages = self.context.build_messages(

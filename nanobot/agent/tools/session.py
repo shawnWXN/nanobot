@@ -25,14 +25,7 @@ class UpdateSessionMetadataTool(Tool):
 
     @property
     def description(self) -> str:
-        return """Update session metadata including customer profile and CRM config.
-
-Use ONLY when user explicitly provides information like:
-- Customer website, brand, business type
-- Contact person names and roles
-- CRM system ID (uid), customer room ID (roomid)
-
-Chinese trigger: '更新会话记忆' or similar."""
+        return """Update session metadata including customer profile and CRM config."""
 
     @property
     def parameters(self) -> dict[str, Any]:

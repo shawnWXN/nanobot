@@ -163,11 +163,11 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
         self,
         history: list[dict[str, Any]],
         current_message: str,
-        skill_names: list[str] | None = None,
+        session_metadata: dict[str, Any] | None = None,
         media: list[str] | None = None,
         channel: str | None = None,
         chat_id: str | None = None,
-        session_metadata: dict[str, Any] | None = None,
+        skill_names: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Build the complete message list for an LLM call.
