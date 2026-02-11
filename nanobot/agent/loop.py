@@ -3,7 +3,6 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
 
 from loguru import logger
 
@@ -19,7 +18,6 @@ from nanobot.agent.tools.web import WebSearchTool, WebFetchTool
 from nanobot.agent.tools.message import MessageTool
 from nanobot.agent.tools.spawn import SpawnTool
 from nanobot.agent.tools.cron import CronTool
-from nanobot.agent.tools.memory import UpdateSessionMemoryTool
 from nanobot.agent.tools.memory import UpdateSessionMemoryTool
 from nanobot.agent.subagent import SubagentManager
 from nanobot.session.manager import SessionManager
