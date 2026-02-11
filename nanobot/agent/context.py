@@ -127,14 +127,16 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
         """Format session metadata into system prompt section."""
         lines = ["# Session Context"]
 
-        if website := metadata.get("website_domain"):
+        # Customer profile
+        customer_profile = metadata.get("customer_profile", {})
+        if website := customer_profile.get("website_domain"):
             lines.append(f"Website: {website}")
-        if business := metadata.get("business_type"):
+        if business := customer_profile.get("business_type"):
             lines.append(f"Business Type: {business}")
-        if intro := metadata.get("brand_intro"):
+        if intro := customer_profile.get("brand_intro"):
             lines.append(f"Brand Intro: {intro}")
 
-        contacts = metadata.get("contacts", [])
+        contacts = customer_profile.get("contacts", [])
         if contacts:
             lines.append("Contacts:")
             for contact in contacts:
@@ -142,7 +144,16 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
                 role = contact.get("role", "Unknown")
                 lines.append(f"- {name} ({role})")
 
-        if summary := metadata.get("last_summary"):
+        # CRM config
+        crm_config = metadata.get("crm_config", {})
+        if uid := crm_config.get("uid"):
+            lines.append(f"CRM UID: {uid}")
+        if roomid := crm_config.get("roomid"):
+            lines.append(f"Room ID: {roomid}")
+
+        # Conversation summary
+        conv_summary = metadata.get("conversation_summary", {})
+        if summary := conv_summary.get("last_summary"):
             lines.append("\n# Conversation Summary")
             lines.append(summary)
 

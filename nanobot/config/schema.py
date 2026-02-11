@@ -162,6 +162,9 @@ class AgentDefaults(BaseModel):
     temperature: float = 0.7
     max_tool_iterations: int = 20
 
+    # Session configuration
+    session_max_messages: int = 50  # Max messages in LLM context & summary trigger threshold
+
 
 class AgentsConfig(BaseModel):
     """Agent configuration."""

@@ -18,7 +18,7 @@ from nanobot.agent.tools.web import WebSearchTool, WebFetchTool
 from nanobot.agent.tools.message import MessageTool
 from nanobot.agent.tools.spawn import SpawnTool
 from nanobot.agent.tools.cron import CronTool
-from nanobot.agent.tools.memory import UpdateSessionMemoryTool
+from nanobot.agent.tools.session import UpdateSessionMetadataTool
 from nanobot.agent.subagent import SubagentManager
 from nanobot.session.manager import SessionManager
 
@@ -47,6 +47,7 @@ class AgentLoop:
         cron_service: "CronService | None" = None,
         restrict_to_workspace: bool = False,
         session_manager: SessionManager | None = None,
+        session_max_messages: int = 50,
     ):
         from nanobot.config.schema import ExecToolConfig
         from nanobot.cron.service import CronService
@@ -59,6 +60,7 @@ class AgentLoop:
         self.exec_config = exec_config or ExecToolConfig()
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
+        self.session_max_messages = session_max_messages
         
         self.context = ContextBuilder(workspace)
         self.summarizer = Summarizer(provider, model)
@@ -110,7 +112,7 @@ class AgentLoop:
             self.tools.register(CronTool(self.cron_service))
         
         # Memory tool
-        self.tools.register(UpdateSessionMemoryTool(self.sessions))
+        self.tools.register(UpdateSessionMetadataTool(self.sessions))
     
     async def run(self) -> None:
         """Run the agent loop, processing messages from the bus."""
@@ -180,13 +182,13 @@ class AgentLoop:
         if isinstance(cron_tool, CronTool):
             cron_tool.set_context(msg.channel, msg.chat_id)
             
-        memory_tool = self.tools.get("update_session_memory")
-        if isinstance(memory_tool, UpdateSessionMemoryTool):
+        memory_tool = self.tools.get("update_session_metadata")
+        if isinstance(memory_tool, UpdateSessionMetadataTool):
             memory_tool.set_context(msg.channel, msg.chat_id)
         
         # Build initial messages (use get_history for LLM-formatted messages)
         messages = self.context.build_messages(
-            history=session.get_history(),
+            history=session.get_history(self.session_max_messages),
             current_message=msg.content,
             media=msg.media if msg.media else None,
             channel=msg.channel,
@@ -246,17 +248,16 @@ class AgentLoop:
         preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
         logger.info(f"Response to {msg.channel}:{msg.sender_id}: {preview}")
         
-# Save to session
+        # Save to session
         session.add_message("user", msg.content)
         session.add_message("assistant", final_content)
         self.sessions.save(session)
-        
+
         # Check for summarization
-        summary_meta = session.metadata.get("conversation_summary", {})
-        processed_count = summary_meta.get("processed_count", 0)
+        processed_count = session.metadata.get("conversation_summary", {}).get("processed_count", 0)
         current_count = len(session.messages)
-        
-        if current_count - processed_count >= 50:
+
+        if current_count - processed_count >= self.session_max_messages:
             asyncio.create_task(self._run_summarization(session.key, processed_count, current_count))
         
         return OutboundMessage(
@@ -302,13 +303,13 @@ class AgentLoop:
         if isinstance(cron_tool, CronTool):
             cron_tool.set_context(origin_channel, origin_chat_id)
             
-        memory_tool = self.tools.get("update_session_memory")
-        if isinstance(memory_tool, UpdateSessionMemoryTool):
+        memory_tool = self.tools.get("update_session_metadata")
+        if isinstance(memory_tool, UpdateSessionMetadataTool):
             memory_tool.set_context(origin_channel, origin_chat_id)
         
         # Build messages with the announce content
         messages = self.context.build_messages(
-            history=session.get_history(),
+            history=session.get_history(self.session_max_messages),
             current_message=msg.content,
             channel=origin_channel,
             chat_id=origin_chat_id,
@@ -368,27 +369,24 @@ class AgentLoop:
             chat_id=origin_chat_id,
             content=final_content
         )
-    
 
     async def _run_summarization(self, session_key: str, start_index: int, end_index: int) -> None:
         """Run background summarization task."""
         try:
             session = self.sessions.get_or_create(session_key)
-            # Use the messages snapshot effectively
             recent_messages = session.messages[start_index:end_index]
-            
-            summary_meta = session.metadata.get("conversation_summary", {})
-            existing_summary = summary_meta.get("summary")
-            
+
+            existing_summary = session.metadata.get("conversation_summary", {}).get("last_summary")
+
             new_summary = await self.summarizer.generate_summary(recent_messages, existing_summary)
-            
+
             session.metadata["conversation_summary"] = {
-                "summary": new_summary,
+                "last_summary": new_summary,
                 "processed_count": end_index
             }
             self.sessions.save(session)
             logger.info(f"Updated conversation summary for {session_key}")
-            
+
         except Exception as e:
             logger.error(f"Error in background summarization for {session_key}: {e}")
 
