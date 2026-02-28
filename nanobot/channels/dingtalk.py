@@ -66,6 +66,13 @@ class NanobotDingTalkHandler(CallbackHandler):
             sender_id = chatbot_msg.sender_staff_id or chatbot_msg.sender_id
             sender_name = chatbot_msg.sender_nick or "Unknown"
 
+            # Extract conversation info
+            conversation_type = message.data.get("conversationType", "1")
+            conversation_id = message.data.get("conversationId") or message.data.get("openConversationId")
+
+            if conversation_type == "2" and conversation_id:
+                sender_id = f"group:{conversation_id}"
+
             logger.info("Received DingTalk message from {} ({}): {}", sender_name, sender_id, content)
 
             # Forward to Nanobot via _on_message (non-blocking).
@@ -197,21 +204,42 @@ class DingTalkChannel(BaseChannel):
         if not token:
             return
 
-        # oToMessages/batchSend: sends to individual users (private chat)
-        # https://open.dingtalk.com/document/orgapp/robot-batch-send-messages
-        url = "https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend"
-
         headers = {"x-acs-dingtalk-access-token": token}
 
-        data = {
-            "robotCode": self.config.client_id,
-            "userIds": [msg.chat_id],  # chat_id is the user's staffId
-            "msgKey": "sampleMarkdown",
-            "msgParam": json.dumps({
-                "text": msg.content,
-                "title": "Nanobot Reply",
-            }, ensure_ascii=False),
+        content = msg.content
+
+        # If sending to a group, mention the original sender if known
+        if msg.chat_id.startswith("group:") and msg.metadata.get("sender_name"):
+            content = f"{content}\n\n@{msg.metadata.get('sender_name')}"
+
+        msg_param_dict = {
+            "text": content,
+            "title": "Nanobot Reply",
         }
+
+        msg_param = json.dumps(msg_param_dict, ensure_ascii=False)
+
+        if msg.chat_id.startswith("group:"):
+            # Group chat
+            # URL: https://api.dingtalk.com/v1.0/robot/groupMessages/send
+            url = "https://api.dingtalk.com/v1.0/robot/groupMessages/send"
+            real_conversation_id = msg.chat_id[6:]  # Remove "group:" prefix
+            data = {
+                "robotCode": self.config.client_id,
+                "openConversationId": real_conversation_id,
+                "msgKey": "sampleMarkdown",
+                "msgParam": msg_param,
+            }
+        else:
+            # Private chat
+            # URL: https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend
+            url = "https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend"
+            data = {
+                "robotCode": self.config.client_id,
+                "userIds": [msg.chat_id],
+                "msgKey": "sampleMarkdown",
+                "msgParam": msg_param,
+            }
 
         if not self._http:
             logger.warning("DingTalk HTTP client not initialized, cannot send")
