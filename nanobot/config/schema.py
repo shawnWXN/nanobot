@@ -58,6 +58,18 @@ class DingTalkConfig(Base):
     allow_from: list[str] = Field(default_factory=list)  # Allowed staff_ids
 
 
+class WecomConfig(Base):
+    """企业微信 AI Bot channel 配置（WebSocket 长连接模式）。"""
+
+    enabled: bool = False
+    bot_id: str = ""  # 企业微信 AI Bot 的 bot_id
+    secret: str = ""  # 企业微信 AI Bot 的 secret
+    ws_url: str = "wss://openws.work.weixin.qq.com"
+    allow_from: list[str] = Field(default_factory=list)
+    heartbeat_interval: int = 30  # 心跳间隔（秒）
+    max_missed_pongs: int = 2  # 连续丢失多少次 pong 后强制断连
+
+
 class DiscordConfig(Base):
     """Discord channel configuration."""
 
@@ -212,6 +224,7 @@ class ChannelsConfig(Base):
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
     mochat: MochatConfig = Field(default_factory=MochatConfig)
     dingtalk: DingTalkConfig = Field(default_factory=DingTalkConfig)
+    wecom: WecomConfig = Field(default_factory=WecomConfig)
     email: EmailConfig = Field(default_factory=EmailConfig)
     slack: SlackConfig = Field(default_factory=SlackConfig)
     qq: QQConfig = Field(default_factory=QQConfig)

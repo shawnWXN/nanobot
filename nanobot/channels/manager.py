@@ -104,6 +104,17 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("DingTalk channel not available: {}", e)
 
+        # Wecom channel
+        if self.config.channels.wecom.enabled:
+            try:
+                from nanobot.channels.wecom import WecomChannel
+                self.channels["wecom"] = WecomChannel(
+                    self.config.channels.wecom, self.bus
+                )
+                logger.info("Wecom channel enabled")
+            except ImportError as e:
+                logger.warning("Wecom channel not available: {}", e)
+
         # Email channel
         if self.config.channels.email.enabled:
             try:
